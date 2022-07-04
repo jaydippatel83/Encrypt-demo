@@ -14,16 +14,26 @@ import Paper from '@mui/material/Paper';
 import Modal from '@mui/material/Modal';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import PDFViewer from 'pdf-viewer-reactjs'
+import { Viewer } from '@react-pdf-viewer/core';
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 
 
 function App() {
+  let docToPrint = React.createRef();
 
   const [pass, setPass] = useState("");
   const [modalpass, setModalPass] = useState("");
   const [encrypt, setEncrypt] = useState();
-  const [decrypt, setDecrypt] = useState();
+  const [photo, setPhoto] = useState();
+  const [message, setMessage] = useState();
+  // const [ephoto, setEPhoto] = useState();
+  // const [emessage, setEMessage] = useState();
   const [modalData, setModalData] = useState();
   const [url, setUrl] = useState('');
+  const [pdfe, setPdf] = useState('');
+  const [blobs, setBlobs] = useState('');
   const [open, setOpen] = React.useState(false);
 
   const handleOpen = (e) => {
@@ -35,25 +45,52 @@ function App() {
 
   const client = create('https://ipfs.infura.io:5001/api/v0')
 
-  async function onChangeAvatar(e) {
-    // const file = e.target.files[0]; 
-
+  async function onChangeMessage(e) {
+    // const file = e.target.files[0];  
     var iv = cryptoJs.enc.Base64.parse("");//giving empty initialization vector
     var key = cryptoJs.SHA256(pass);//hashing the key using SHA256
     var encryptedString = getEncryptData(e, iv, key);
     console.log(encryptedString, "sdfs");
     encryptedString.then(async (e) => {
-      console.log(e, "eeeee");
-      const added = await client.add(e)
-      const url = `https://ipfs.infura.io/ipfs/${added.path}`;
-      setUrl(url);
+      setMessage(e);
+      // console.log(e, "eeeee");
+      // const added = await client.add(e)
+      // const url = `https://ipfs.infura.io/ipfs/${added.path}`;
+      // setUrl(url);
       // const dd = await axios.get(element);
 
     })
 
   }
 
+
+  const onChangeAvatar = (e) => {
+    const file = e.target.files[0];
+
+    console.log(file.name, "name");
+    console.log(file.type, "type");
+    console.log(file.size, "size");
+
+    var reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = function () {
+
+      var b64 = reader.result.replace(/^data:.+;base64,/, '');
+      console.log(b64, "res");
+      var iv = cryptoJs.enc.Base64.parse("");
+      var key = cryptoJs.SHA256(pass)
+      var encryptedString = getEncryptData(reader.result, iv, key);
+      encryptedString.then(async (e) => {
+        setPhoto(e);
+      })
+    };
+    reader.onerror = function (error) {
+      console.log('Error: ', error);
+    };
+  }
+
   const getEncryptData = async (data, iv, key) => {
+
     var encryptedString;
     if (typeof data == "string") {
       data = data.slice();
@@ -77,9 +114,20 @@ function App() {
 
 
   const encryptData = async () => {
+
+    const enData = JSON.stringify({
+      message: message,
+      photo: photo
+    });
+    const added = await client.add(enData);
+    console.log(added, "added");
+    const url = `https://ipfs.infura.io/ipfs/${added.path}`;
+
+    console.log(url, "url");
+
     const dataD = [];
     // var ciphertext = await cryptoJs.AES.encrypt(url, pass).toString(); 
-    // console.log(ciphertext,"ciphertext"); 
+    console.log(url, "ciphertext");
     // url.then((e)=>{
     dataD.push({ encrypt: url, decrypt: '' });
     // }) 
@@ -88,14 +136,8 @@ function App() {
     toast.success("Data Successfully Encrypted!")
   }
 
-
-  // const decryptData = () => {
-  // var bytes  = cryptoJs.AES.decrypt(ciphertext, 'secret key 123');
-  // var originalText = bytes.toString(cryptoJs.enc.Utf8);
-  // }
-
   function truncate(str, max, sep) {
-    max = max || 15;
+    max = max || 35;
     var len = str.length;
     if (len > max) {
       sep = sep || "...";
@@ -111,9 +153,6 @@ function App() {
 
   const getDecryptedData = async () => {
 
-
-
-
     var iv = cryptoJs.enc.Base64.parse("");
     var key = cryptoJs.SHA256(modalpass);
 
@@ -121,41 +160,42 @@ function App() {
 
     const dd = await axios.get(modalData);
     console.log(dd.data, "dd");
-    var decrypteddata = decryptData(dd.data.toString(), iv, key);
+    var decrypteddata = decryptData(dd.data.message.toString(), iv, key);
+    var decrypteddataPhoto = decryptData(dd.data.photo.toString(), iv, key);
 
-    console.log(decrypteddata, "alert");
+    console.log(decrypteddataPhoto, "alert");
 
-    if (decrypteddata == '') {
+    if (decrypteddata == '' || decrypteddataPhoto == '') {
       toast.error("Invalid pass phrase! Please try again.");
       return false;
     }
 
-    console.log(decrypteddata, "decrypteddata");//genrated decryption string:  Example1
-
-
-
-
-
-    // var bytes = cryptoJs.AES.decrypt(modalData, modalpass);
-    // var originalData = bytes.toString(cryptoJs.enc.Utf8);
-
-    // console.log(originalData, "originalData");
-
-    // if(!/^data:/.test(originalData)){
-    //   alert("Invalid pass phrase or file! Please try again.");
-    //   return false;
-    // }
-
+    const decDeta = {
+      mes: decrypteddata,
+      pho: decrypteddataPhoto,
+    }
     const newArray = encrypt && encrypt.map(e => {
       if (e.encrypt == modalData) {
-        return { ...e, decrypt: decrypteddata };
+        return { ...e, decrypt: decDeta };
       }
       return e;
     })
+
     setEncrypt(newArray);
+
+    const blob = base64toBlob(decrypteddataPhoto);
+    setBlobs(blob);
+    console.log(blob, "blob");
+    const pdfurl = URL.createObjectURL(blob);
+    setPdf(pdfurl);
+    console.log(pdfurl, "pdfurl");
+
+
     toast.success("Data Successfully Decrypted!")
     handleClose();
   }
+
+
 
   function decryptData(encrypted, iv, key) {
 
@@ -168,6 +208,47 @@ function App() {
     console.log(decrypted, "decrypted");
     return decrypted.toString(cryptoJs.enc.Utf8);
   }
+
+
+  async function storeFiles() {
+    const input = docToPrint.current;
+    // const token = process.env.API_TOKEN;
+    // const client = new Web3Storage({ token });
+
+    html2canvas(input).then((canvas) => {
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "px",
+        format: [900, 600],
+      });
+      // uploadBook(pdf);
+
+      pdf.addImage(imgData, "JPEG", 0, 0);
+      pdf.save("demo.pdf");
+    });
+  }
+
+
+
+
+
+  const base64toBlob = (data) => {
+    // Cut the prefix `data:application/pdf;base64` from the raw base 64
+    const base64WithoutPrefix = data.substr('data:application/pdf;base64,'.length);
+
+    const bytes = atob(base64WithoutPrefix);
+    let length = bytes.length;
+    let out = new Uint8Array(length);
+
+    while (length--) {
+      out[length] = bytes.charCodeAt(length);
+    }
+
+    return new Blob([out], { type: 'application/pdf' });
+  };
+
+  console.log(encrypt, "decrypteddata");//genrated decryption string:  Example1
 
 
   return (
@@ -207,13 +288,12 @@ function App() {
               </Typography>
               <TextField fullWidth onChange={(e) => setPass(e.target.value)} label="Enter Pass phrase" id="fullWidth" />
 
-              <Typography align='left' gutterBottom variant="h5" component="div" sx={{marginTop:'10px'}}>
-                Message: 
+              <Typography align='left' gutterBottom variant="h5" component="div" sx={{ marginTop: '10px' }}>
+                Message:
               </Typography>
-              <TextField fullWidth onChange={(e) => onChangeAvatar(e.target.value)} label="Enter Message" id="fullWidth" />
-              {/* <div className='' style={{ margin: '10px 0', textAlign: 'left' }}>
+              <TextField fullWidth onChange={(e) => onChangeMessage(e.target.value)} label="Enter Message" id="fullWidth" />
+              <div className='' style={{ margin: '10px 0', textAlign: 'left' }}>
                 <input
-                  accept="image/*"
                   className="inputFile"
                   id="contained-button-file"
                   multiple
@@ -225,7 +305,7 @@ function App() {
                     Upload File
                   </Button>
                 </label>
-              </div> */}
+              </div>
             </CardContent>
             <CardActions>
               <Button variant='contained' onClick={encryptData}>Encrypt</Button>
@@ -259,15 +339,40 @@ function App() {
 
                     <TableCell align="right">
                       {
-                        row.decrypt == "" ? <Button variant='contained' onClick={() => handleOpen(row.encrypt)}>Decrypt Data</Button> : truncate(row.decrypt)
+                        row.decrypt == "" ? <Button variant='contained' onClick={() => handleOpen(row.encrypt)}>Decrypt Data</Button> : row.decrypt.mes
                       }
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell ref={docToPrint} align="right">
                       {
-                        row.decrypt && <p>{row.decrypt}</p>
+                        row.decrypt && <div>
+                          {
+                            blobs.type != 'application/pdf' && <img src={row.decrypt.pho} width="100" height="100" />
+                          }
+
+                        </div>
                       }
+
+{
+                      blobs.type == 'application/pdf' && <div
+                        style={{
+                          border: '1px solid rgba(0, 0, 0, 0.3)',
+                          height: '350px',
+                          width: '300px'
+                        }}
+                      > <Viewer  onZoom={20} fileUrl={pdfe && pdfe} /> </div>
+                    }
+
+
+
+                    </TableCell>
+                    
+                    <TableCell>
+                      <Button variant="outlined" onClick={() => storeFiles()}>
+                        Download PDF !
+                      </Button>
                     </TableCell>
                   </TableRow>
+
                 ))}
               </TableBody>
             </Table>

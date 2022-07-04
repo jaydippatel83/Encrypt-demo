@@ -29,7 +29,7 @@ function App() {
   const [photo, setPhoto] = useState();
   const [message, setMessage] = useState();
   // const [ephoto, setEPhoto] = useState();
-  // const [emessage, setEMessage] = useState();
+  const [emessage, setEMessage] = useState();
   const [modalData, setModalData] = useState();
   const [url, setUrl] = useState('');
   const [pdfe, setPdf] = useState('');
@@ -47,6 +47,7 @@ function App() {
 
   async function onChangeMessage(e) {
     // const file = e.target.files[0];  
+    setEMessage(e);
     var iv = cryptoJs.enc.Base64.parse("");//giving empty initialization vector
     var key = cryptoJs.SHA256(pass);//hashing the key using SHA256
     var encryptedString = getEncryptData(e, iv, key);
@@ -75,8 +76,7 @@ function App() {
     reader.readAsDataURL(file);
     reader.onload = function () {
 
-      var b64 = reader.result.replace(/^data:.+;base64,/, '');
-      console.log(b64, "res");
+      var b64 = reader.result.replace(/^data:.+;base64,/, ''); 
       var iv = cryptoJs.enc.Base64.parse("");
       var key = cryptoJs.SHA256(pass)
       var encryptedString = getEncryptData(reader.result, iv, key);
@@ -109,8 +109,7 @@ function App() {
     }
     return encryptedString.toString();
   }
-
-  console.log(url, "url");
+ 
 
 
   const encryptData = async () => {
@@ -121,19 +120,19 @@ function App() {
     });
     const added = await client.add(enData);
     console.log(added, "added");
-    const url = `https://ipfs.infura.io/ipfs/${added.path}`;
-
-    console.log(url, "url");
+    const url = `https://ipfs.infura.io/ipfs/${added.path}`; 
+ 
 
     const dataD = [];
     // var ciphertext = await cryptoJs.AES.encrypt(url, pass).toString(); 
-    console.log(url, "ciphertext");
+    
     // url.then((e)=>{
     dataD.push({ encrypt: url, decrypt: '' });
     // }) 
-    setEncrypt(dataD);
-    setPass("");
+    setEncrypt(dataD); 
     toast.success("Data Successfully Encrypted!")
+    setEMessage("");
+    setPass("");
   }
 
   function truncate(str, max, sep) {
@@ -154,16 +153,12 @@ function App() {
   const getDecryptedData = async () => {
 
     var iv = cryptoJs.enc.Base64.parse("");
-    var key = cryptoJs.SHA256(modalpass);
+    var key = cryptoJs.SHA256(modalpass);  
 
-    console.log(modalData, "modalData");
-
-    const dd = await axios.get(modalData);
-    console.log(dd.data, "dd");
+    const dd = await axios.get(modalData); 
     var decrypteddata = decryptData(dd.data.message.toString(), iv, key);
     var decrypteddataPhoto = decryptData(dd.data.photo.toString(), iv, key);
-
-    console.log(decrypteddataPhoto, "alert");
+ 
 
     if (decrypteddata == '' || decrypteddataPhoto == '') {
       toast.error("Invalid pass phrase! Please try again.");
@@ -184,13 +179,9 @@ function App() {
     setEncrypt(newArray);
 
     const blob = base64toBlob(decrypteddataPhoto);
-    setBlobs(blob);
-    console.log(blob, "blob");
+    setBlobs(blob); 
     const pdfurl = URL.createObjectURL(blob);
-    setPdf(pdfurl);
-    console.log(pdfurl, "pdfurl");
-
-
+    setPdf(pdfurl); 
     toast.success("Data Successfully Decrypted!")
     handleClose();
   }
@@ -204,8 +195,7 @@ function App() {
       iv: iv,
       mode: cryptoJs.mode.CBC,
       padding: cryptoJs.pad.Pkcs7
-    });
-    console.log(decrypted, "decrypted");
+    }); 
     return decrypted.toString(cryptoJs.enc.Utf8);
   }
 
@@ -225,7 +215,7 @@ function App() {
       // uploadBook(pdf);
 
       pdf.addImage(imgData, "JPEG", 0, 0);
-      pdf.save("demo.pdf");
+      pdf.save("encrypt.pdf");
     });
   }
 
@@ -243,13 +233,9 @@ function App() {
 
     while (length--) {
       out[length] = bytes.charCodeAt(length);
-    }
-
+    } 
     return new Blob([out], { type: 'application/pdf' });
-  };
-
-  console.log(encrypt, "decrypteddata");//genrated decryption string:  Example1
-
+  }; 
 
   return (
     <div className="App">
@@ -286,12 +272,12 @@ function App() {
               <Typography align='left' gutterBottom variant="h5" component="div">
                 Pass Phrase
               </Typography>
-              <TextField fullWidth onChange={(e) => setPass(e.target.value)} label="Enter Pass phrase" id="fullWidth" />
+              <TextField fullWidth value={pass} onChange={(e) => setPass(e.target.value)} label="Enter Pass phrase" id="fullWidth" />
 
               <Typography align='left' gutterBottom variant="h5" component="div" sx={{ marginTop: '10px' }}>
                 Message:
               </Typography>
-              <TextField fullWidth onChange={(e) => onChangeMessage(e.target.value)} label="Enter Message" id="fullWidth" />
+              <TextField fullWidth value={emessage} onChange={(e) => onChangeMessage(e.target.value)} label="Enter Message" id="fullWidth" />
               <div className='' style={{ margin: '10px 0', textAlign: 'left' }}>
                 <input
                   className="inputFile"
@@ -320,7 +306,8 @@ function App() {
                   <TableCell>#</TableCell>
                   <TableCell align="right">Encrypted Data</TableCell>
                   <TableCell align="right">Decrypted Data</TableCell>
-                  <TableCell align="right">Image</TableCell>
+                  <TableCell align="right">File</TableCell>
+                  <TableCell align="right">Download</TableCell>
 
                 </TableRow>
               </TableHead>
@@ -342,7 +329,7 @@ function App() {
                         row.decrypt == "" ? <Button variant='contained' onClick={() => handleOpen(row.encrypt)}>Decrypt Data</Button> : row.decrypt.mes
                       }
                     </TableCell>
-                    <TableCell ref={docToPrint} align="right">
+                    <TableCell  align="right">
                       {
                         row.decrypt && <div>
                           {
@@ -359,7 +346,8 @@ function App() {
                           height: '350px',
                           width: '300px'
                         }}
-                      > <Viewer  onZoom={20} fileUrl={pdfe && pdfe} /> </div>
+                        ref={docToPrint}
+                      > <Viewer   onZoom={20} fileUrl={pdfe && pdfe} /> </div>
                     }
 
 
